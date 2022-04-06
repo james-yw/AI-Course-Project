@@ -45,8 +45,14 @@ def main():
     if train_gvs.pretrain:
         print("Using pretrain model, model path:",train_gvs.pretrained_model_path)
     model = NetModel(train_gvs)
-#     data = torch.rand(2,3,512,512)
-#     model.model_param(data)
+    
+    ############################
+    #Type the parameter and mult-ADD on Screen
+    ############################ 
+    data = next(iter(train_loader))[0]
+    model.model_param(data)
+
+
 
     max_valid_acc = -1.0
     max_valid_epoch = -1
@@ -56,7 +62,10 @@ def main():
 
     logger.info("Begin Training")
     for epoch in range(train_gvs.max_max_epoch):
+        
+        ############################
         #learning rate decay
+        ############################
         if epoch%train_gvs.decay_step==0:
             train_gvs.learning_rate = train_gvs.learning_rate* train_gvs.decay_rate
             
@@ -113,12 +122,12 @@ def load_data_cifar10():
     data_transforms = transforms.Compose(
         [transforms.Resize([train_gvs.width, train_gvs.height]), transforms.ToTensor()])
 
-    train_dataset = datasets.CIFAR10('./Datasets', train=True, download=True, transform=data_transforms)
+    train_dataset = datasets.CIFAR10('../Datasets', train=True, download=True, transform=data_transforms)
 
     train_loader = DataLoader(train_dataset, batch_size=train_gvs.batch_size, num_workers=0, drop_last=False,
                               shuffle=True)
 
-    test_dataset = datasets.CIFAR10(root='./Datasets', train=False, download=True, transform=data_transforms)
+    test_dataset = datasets.CIFAR10(root='../Datasets', train=False, download=True, transform=data_transforms)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=train_gvs.batch_size, shuffle=False,
                                               num_workers=0)
     return train_gvs, test_gvs, train_loader, test_loader

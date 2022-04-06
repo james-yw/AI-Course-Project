@@ -11,6 +11,12 @@ import sys,os
 from model.utils._internally_replaced_utils import load_state_dict_from_url
 from model.utils.utils import _log_api_usage_once
 
+# from utils._internally_replaced_utils import load_state_dict_from_url
+# from utils.utils import _log_api_usage_once
+
+
+from torchstat import stat
+
 # from torch.hub import load_state_dict_from_url
 # from torch._C import _log_api_usage_once
 
@@ -146,9 +152,16 @@ def squeezenet1_1(pretrained: bool = False, progress: bool = True, **kwargs: Any
 #test SqueezeNet
 if __name__=="__main__":
     #Test SqueezeNet1_0
-    model = squeezenet1_0(True, True, num_classes=10)
-    #print(model)
+    model = squeezenet1_0(num_classes=10)
     
-    #Test SqueezeNet1_1
-    model = squeezenet1_1(True, True, num_classes=10)
-    #print(model)
+    model_param = sum([param.nelement() for param in model.parameters()])/1e6
+    print(f'model parameters:{model_param}M')
+    
+    #input (B,C,H,W)
+    input = torch.rand(50,3,32,32)
+    output = model(input)
+    
+    print("input_shape:",input.shape)
+    print("output_shape:",output.shape)
+    
+    stat(model,input.shape[1:])

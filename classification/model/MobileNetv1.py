@@ -11,25 +11,12 @@ from model.utils.utils import _log_api_usage_once
 from model.utils._utils import _make_divisible
 
 
-# necessary for backwards compatibility
-class _DeprecatedConvBNAct(Conv2dNormActivation):
-    def __init__(self, *args, **kwargs):
-        warnings.warn(
-            "The ConvBNReLU/ConvBNActivation classes are deprecated since 0.12 and will be removed in 0.14. "
-            "Use torchvision.ops.misc.Conv2dNormActivation instead.",
-            FutureWarning,
-        )
-        if kwargs.get("norm_layer", None) is None:
-            kwargs["norm_layer"] = nn.BatchNorm2d
-        if kwargs.get("activation_layer", None) is None:
-            kwargs["activation_layer"] = nn.ReLU6
-        super().__init__(*args, **kwargs)
+# from utils._internally_replaced_utils import load_state_dict_from_url
+# from ops.misc import Conv2dNormActivation
+# from utils.utils import _log_api_usage_once
+# from utils._utils import _make_divisible
 
-
-ConvBNReLU = _DeprecatedConvBNAct
-ConvBNActivation = _DeprecatedConvBNAct
-
-
+from torchstat import stat
 
 class Block(nn.Module):
     # Depthwise conv + Pointwise conv
@@ -40,40 +27,29 @@ class Block(nn.Module):
         self.stride = stride
         if stride not in [1, 2]:
             raise ValueError(f"stride should be 1 or 2 insted of {stride}")
-
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
-
-        hidden_dim = int(round(inp * expand_ratio))
-        self.use_res_connect = self.stride == 1 and inp == oup
-
+            
         layers: List[nn.Module] = []
-        if expand_ratio != 1:
-            # pw
-            layers.append(
-                Conv2dNormActivation(inp, hidden_dim, kernel_size=1, norm_layer=norm_layer, activation_layer=nn.ReLU6)
-            )
         layers.extend(
             [
                 # dw
                 Conv2dNormActivation(
-                    hidden_dim,
-                    hidden_dim,
+                    inp,
+                    inp,
                     stride=stride,
-                    groups=hidden_dim,
+                    groups=inp,
                     norm_layer=norm_layer,
                     activation_layer=nn.ReLU6,
                 ),
                 # pw-linear
-                nn.Conv2d(hidden_dim, oup, 1, 1, 0, bias=False),
+                nn.Conv2d(inp, oup, 1, 1, 0, bias=False),
                 norm_layer(oup),
                 nn.ReLU6(),
             ]
         )
         self.conv = nn.Sequential(*layers)
-        self.out_channels = oup
-        self._is_cn = stride > 1
-
+        
     def forward(self, x: Tensor) -> Tensor:
         return self.conv(x)
 
@@ -206,11 +182,14 @@ if __name__=="__main__":
     print(f'model parameters:{model_param}M')
     
     #input (B,C,H,W)
-    input = torch.rand(2,3,30,30)
+    input = torch.rand(50,3,32,32)
     output = model(input)
     
     print("input_shape:",input.shape)
     print("output_shape:",output.shape)
+    
+    stat(model,input.shape[1:])
+    
     
             
             

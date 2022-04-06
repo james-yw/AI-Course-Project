@@ -7,9 +7,13 @@ from model.alexnet import alexnet
 from model.MobileNetv1 import mobilenet_v1
 from model.MobileNetv2 import mobilenet_v2
 from model.MobileNetv3 import mobilenet_v3_large, mobilenet_v3_small
-from model.squeezenet import squeezenet1_0
+from model.squeezenet import squeezenet1_0 as squeezenet
+
+from model.ConvNet import convnet
+
 
 from torchstat import stat
+import torch.nn.functional as F
 
 torch.backends.cudnn.enabled = False
 
@@ -45,15 +49,17 @@ class NetModel(object):
             print(f"Training On CPU...")
             
         self.network = self._get_network().to(self.device)
-        print(self.network)
+        #print(self.network)
         
+        ##################
         #loss function
+        ##################
         
         if self.loss == 'CrossEntropyLoss': 
             self.criterion = nn.CrossEntropyLoss()
         
         elif self.loss == 'Focal_loss':
-            self.criterion = Focal_loss()
+            self.criterion = Focal_loss(self.num_classes)
             
         
         # Optimizer
@@ -146,7 +152,7 @@ class NetModel(object):
      
     def model_param(self, data):
         
-        model = Classifier(self.net, self.num_classes)
+        model = Classifier(self.net, self.device, self.num_classes, self.pretrain, self.pretrained_model_path, self.drop_layer)
         model_param = sum([param.nelement() for param in model.parameters()])/1e6
         print(f'model parameters:{model_param}M')
         stat(model,data.shape[1:])
@@ -167,8 +173,17 @@ class Classifier(nn.Module):
             m = mobilenet_v3_small(num_classes=10)
         elif net == 'mobilenet_v3_large':
             m = mobilenet_v3_large(num_classes=10) 
+        elif net == 'squeezenet':
+            m = squeezenet(num_classes=10) 
+        elif net == 'convnet':
+            m = convnet(num_classes=10) 
+        
         else:
             raise ValueError(f"Unsupport {self.net}, Please check out the variables settings!")
+        
+        ######################################
+        #load pre-trained model parameters
+        ######################################
         
         if pretrain:
             tdct = self.load_model_param(pretrained_model_path, drop_layer, device)
@@ -194,11 +209,14 @@ class Classifier(nn.Module):
 
     
     
-    
+####################    
 #loss function
+####################
+
+# Focal_loss
 class Focal_loss(nn.Module):
     def __init__(self, num_class=2, alpha=0.6, gamma=2, balance_index=0, smooth=None, size_average=True):
-        super(FocalLoss, self).__init__()
+        super(Focal_loss, self).__init__()
         self.num_class = num_class 
         self.alpha = alpha 
         self.gamma = gamma 
